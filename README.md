@@ -1,10 +1,9 @@
 # spotify-playlist-mp3
 Retrieves the track listing in any Spotify playlist and rips the mp3 from YouTube.
 
-Requires: youtube_dl,
-          Spotify account
+Requires: youtube_dl, Spotify Client ID & Secret. (Get yours at https://developer.spotify.com/my-applications/#!/applications)
 
-Spotify provides all playlist data in a JSON response. To GET it, an OAuth token is required. I am generating a token in their API Console - https://developer.spotify.com/web-api/console/get-playlist/ - and downloading the response to disk. The script uses the JSON file obtained from the console. 
+Input the Spotify URI of any playlist (eg - spotify:user:spotify:playlist:6CodCTqgw2Ot4WlitAM5mA)
 
 
 
