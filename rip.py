@@ -1,7 +1,4 @@
-
-import json
 import youtube_dl
-import urllib.request
 from urllib.parse import quote
 import string
 import base64
