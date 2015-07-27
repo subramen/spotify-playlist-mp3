@@ -1,5 +1,3 @@
-__author__ = 'surajman'
-
 import json
 import youtube_dl
 import urllib.request
@@ -8,8 +6,8 @@ import string
 import base64
 import requests
 
-CLIENT_ID = ""
-CLIENT_SECRET = ""
+CLIENT_ID = "3692671eba56488e9123f0a607f0c36d"
+CLIENT_SECRET = "650f7a04a7e0404a96d2a6e7ec11ea13"
 BLACKLIST = ['live']        # YT results containing these words will be rejected. All lowercase only.
 
 
@@ -82,10 +80,18 @@ def get_playlist(user,plid):
     return response
 
 def ui():
-    url = input("Spotify playlist URI:\n").split(sep=':')
-    # E.g: spotify:user:spotify:playlist:2kW7mAXQD59R08Sz6RJizo
-    user = url[2]
-    plid = url[4]
+    url = input("Spotify playlist URI: (E.g: spotify:user:spotify:playlist:2kW7mAXQD59R08Sz6RJizo)\n")
+    if url.startswith('spotify:'):
+        url = url.split(sep=':')
+        user = url[2]
+        plid = url[4]
+    else if url.startswith('http://'):
+        url = url.split(sep='/')
+        user = url[4]
+        plid = url[6]
+    else:
+        print('Invalid URL.')
+        quit()
     pl = get_playlist(user,plid) # Dict of playlist json
     songlist = create_tracklist(pl)  # List of songs in the playlist
     for c,song in enumerate(songlist): # Display all songs in playlist
@@ -99,8 +105,3 @@ def ui():
 
 if __name__ == "__main__":
     ui()
-
-
-
-
-
