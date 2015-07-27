@@ -1,10 +1,13 @@
+__author__ = 'surajman'
+
+import json
 import youtube_dl
+import urllib.request
 from urllib.parse import quote
 import string
 import base64
 import requests
 
-# Enter your Client ID and Secret. Go to https://developer.spotify.com/my-applications/#!/applications.
 CLIENT_ID = ""
 CLIENT_SECRET = ""
 BLACKLIST = ['live']        # YT results containing these words will be rejected. All lowercase only.
@@ -31,22 +34,27 @@ def downloader(songlist):
         query = quote('+'.join(item))
         req = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q={}&key={}'.format(query,YOUTUBE_API_KEY)
         all_results = requests.get(req).json()['items']
-        found_flag = False
+        FOUND_FLAG = False
         templ = '{0} - {1}.%(ext)s'.format(artists,name)
         ydl_opts = {'quiet':True,'outtmpl':templ,'format': 'bestaudio/best','postprocessors': [{'key': 'FFmpegExtractAudio','preferredcodec': 'mp3','preferredquality': '192',}]}
+        print(' - '.join(song_tuple),end='  ...  ')
 
         for yt_result in all_results:
             title = strip_punc(yt_result['snippet']['title']).lower()
-            if all(keyword.lower() in title for keyword in item) and all(black.lower() not in title for black in BLACKLIST):
+            meta = strip_punc(title+' '+yt_result['snippet']['description']).lower()
+            if all(keyword.lower() in meta for keyword in item) and all(black.lower() not in title for black in BLACKLIST):
+                #Bingo
                 url = "https://www.youtube.com/watch?v={}".format(yt_result['id']['videoId'])
-                found_flag = True
+                FOUND_FLAG = True
                 break
             else:
+                #Try the next result
                 continue
-        print(' - '.join(song_tuple),end='  ...  ')
-        if not found_flag:
+
+        if not FOUND_FLAG:
             print("Not found on Youtube")
             continue
+
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             try:
                 ydl.download([url])
