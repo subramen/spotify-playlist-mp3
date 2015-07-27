@@ -6,8 +6,8 @@ import string
 import base64
 import requests
 
-CLIENT_ID = "3692671eba56488e9123f0a607f0c36d"
-CLIENT_SECRET = "650f7a04a7e0404a96d2a6e7ec11ea13"
+CLIENT_ID = ""
+CLIENT_SECRET = ""
 BLACKLIST = ['live']        # YT results containing these words will be rejected. All lowercase only.
 
 
