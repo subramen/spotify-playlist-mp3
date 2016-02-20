@@ -7,8 +7,7 @@ from urllib.parse import quote
 import base64
 import requests
 from mutagen.easyid3 import EasyID3
-from mutagen.mp3 import MP3
-from mutagen.id3 import ID3, APIC, error
+
 
 YOUTUBE_API_KEY = 'AIzaSyA2NPODG9CokQzqgF457TfRCVbJb3rsV8I'
 CLIENT_ID = "3692671eba56488e9123f0a607f0c36d"
