@@ -1,57 +1,67 @@
+#!/usr/bin/env python
+__author__ = 'surajman'
+
 import json
 import youtube_dl
-import urllib.request
 from urllib.parse import quote
-import string
 import base64
 import requests
+from mutagen.easyid3 import EasyID3
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC, error
 
-CLIENT_ID = ""
-CLIENT_SECRET = ""
-BLACKLIST = ['live']        # YT results containing these words will be rejected. All lowercase only.
+YOUTUBE_API_KEY = 'AIzaSyA2NPODG9CokQzqgF457TfRCVbJb3rsV8I'
+CLIENT_ID = "3692671eba56488e9123f0a607f0c36d"
+CLIENT_SECRET = "650f7a04a7e0404a96d2a6e7ec11ea13"
+STOPWORDS = "remastered remaster version feat featuring".split()
+BLACKLIST = []        # YT results containing these words will be rejected. All lowercase only.
+
+strip_punc = lambda s: ' '.join([word for word in s.split() if word not in STOPWORDS])
 
 
-def strip_punc(s):
-    return ''.join(c for c in s if c not in string.punctuation)
 
 def create_tracklist(js):
-# Pass the Spotify playlist json for track retrieval
+# Parse Spotify playlist json for track retrieval
     songlist=[]
     for song in js['tracks']['items']:
-        name = strip_punc(song['track']['name'])
-        artists = strip_punc(' '.join([artist['name'] for artist in song['track']['artists']]))
-        songlist.append((artists,name))
+        s={}
+        s['album'] = song['track']['album']['name']
+        s['album_cover'] = song['track']['album']['images'][0]['url']
+        s['title'] = song['track']['name']
+        s['artist'] = ', '.join([artist['name'] for artist in song['track']['artists']])
+        songlist.append(s)
     return songlist
 
+
+
 def downloader(songlist):
-    YOUTUBE_API_KEY = 'AIzaSyA2NPODG9CokQzqgF457TfRCVbJb3rsV8I'
-    for song_tuple in songlist:
-        artists = song_tuple[0]
-        name = song_tuple[1]
-        item = (name+' '+artists).split()
-        query = quote('+'.join(item))
+    
+    for song in songlist:
+        FOUND_FLAG = False
+        
+        query = (quote("{}+{}".format(song['artist'],song['title'])))
         req = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q={}&key={}'.format(query,YOUTUBE_API_KEY)
         all_results = requests.get(req).json()['items']
-        FOUND_FLAG = False
-        templ = '{0} - {1}.%(ext)s'.format(artists,name)
+        templ = '{0} - {1}.%(ext)s'.format(song['artist'],song['title'])
         ydl_opts = {'quiet':True,'outtmpl':templ,'format': 'bestaudio/best','postprocessors': [{'key': 'FFmpegExtractAudio','preferredcodec': 'mp3','preferredquality': '192',}]}
-        print(' - '.join(song_tuple),end='  ...  ')
+
+        print("Downloading {}".format(templ))
 
         for yt_result in all_results:
-            title = strip_punc(yt_result['snippet']['title']).lower()
-            meta = strip_punc(title+' '+yt_result['snippet']['description']).lower()
-            if all(keyword.lower() in meta for keyword in item) and all(black.lower() not in title for black in BLACKLIST):
-                #Bingo
+            title = yt_result['snippet']['title'].lower()
+            meta = title+' '+yt_result['snippet']['description'].lower()
+
+            if all(keyword in meta.split() for keyword in strip_punc((song['artist']+' '+song['title']).lower()).split()) and all(black.lower() not in title for black in BLACKLIST):
                 url = "https://www.youtube.com/watch?v={}".format(yt_result['id']['videoId'])
                 FOUND_FLAG = True
                 break
             else:
-                #Try the next result
                 continue
 
         if not FOUND_FLAG:
             print("Not found on Youtube")
             continue
+
 
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             try:
@@ -60,42 +70,53 @@ def downloader(songlist):
             except:
                 print("FAIL")
 
+        tagger = EasyID3('{0} - {1}.mp3'.format(song['artist'],song['title']))
+        tagger['title'] = song['title']
+        tagger['artist'] = song['artist']
+        tagger['album'] = song['album']
+        tagger.save()
+
+
 
 def get_access(CID, CS):
     SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
     payload = {"grant_type" : "client_credentials"}
     base64encoded = base64.b64encode("{}:{}".format(CID,CS).encode('ascii')).decode('utf-8')
     header = {"Authorization" : "Basic {}".format(base64encoded)}
-    post_request = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=header)
-    response = post_request.json()
-    access_token = response['access_token']
-    return access_token
+    return requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=header).json()['access_token']
 
-def get_playlist(user,plid):
-    spotify_oauth = get_access(CLIENT_ID,CLIENT_SECRET)
-    url = "https://api.spotify.com/v1/users/{}/playlists/{}?fields=name,tracks.items(track(name,artists))".format(user,plid)
-    header = {"Authorization" : "Bearer {}".format(spotify_oauth)}
-    get_request = requests.get(url, headers=header)
-    response = get_request.json()
-    return response
 
 def ui():
     url = input("Spotify playlist URI: (E.g: spotify:user:spotify:playlist:2kW7mAXQD59R08Sz6RJizo)\n")
+    
     if url.startswith('spotify:'):
         url = url.split(sep=':')
         user = url[2]
         plid = url[4]
-    else if url.startswith('http://'):
+    elif url.startswith('http://'):
         url = url.split(sep='/')
         user = url[4]
         plid = url[6]
     else:
         print('Invalid URL.')
         quit()
-    pl = get_playlist(user,plid) # Dict of playlist json
+
+    SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
+    payload = {"grant_type" : "client_credentials"}
+    base64encoded = base64.b64encode("{}:{}".format(CLIENT_ID,CLIENT_SECRET).encode('ascii')).decode('utf-8')
+    header = {"Authorization" : "Basic {}".format(base64encoded)}
+    spotify_oauth = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=header).json()['access_token']
+
+    url = "https://api.spotify.com/v1/users/{}/playlists/{}?fields=name,tracks.items(track(name,artists,album))".format(user,plid)
+    header = {"Authorization" : "Bearer {}".format(spotify_oauth)}
+    return requests.get(url, headers=header).json()
+
+
+def main():
+    pl = ui()
     songlist = create_tracklist(pl)  # List of songs in the playlist
     for c,song in enumerate(songlist): # Display all songs in playlist
-        print('{0}  {1}'.format(c,' - '.join(song)))
+        print('{0}  {1} - {2}'.format(c,song['artist'],song['title']))
     try:
         dnd = [int(x) for x in input("Enter comma-separated numbers of those tracks you DON'T want to download (-> 1,3,5)\n-> ").split(sep=',')]
         songlist = [song for c,song in enumerate(songlist) if c not in dnd]
@@ -104,4 +125,9 @@ def ui():
     downloader(songlist)
 
 if __name__ == "__main__":
-    ui()
+    main()
+
+
+
+
+
