@@ -10,8 +10,8 @@ from mutagen.easyid3 import EasyID3
 
 
 YOUTUBE_API_KEY = 'AIzaSyA2NPODG9CokQzqgF457TfRCVbJb3rsV8I'
-CLIENT_ID = "3692671eba56488e9123f0a607f0c36d"
-CLIENT_SECRET = "650f7a04a7e0404a96d2a6e7ec11ea13"
+CLIENT_ID = ""
+CLIENT_SECRET = ""
 STOPWORDS = "remastered remaster version feat featuring".split()
 BLACKLIST = []        # YT results containing these words will be rejected. All lowercase only.
 
